@@ -30,10 +30,15 @@ class Grid2DStates(StateSpace):
 
     def __contains__(self, x):
         # TODO: Implement this function
+        if self.Xmin <= x[0] and x[0] <= self.Xmax and self.Ymin <= x[1] and x[1] <= self.Ymax and x not in self.O:
+            return True
+        else:
+            return False
         raise NotImplementedError
 
     def get_distance_lower_bound(self, x1, x2):
         # TODO: Implement this function
+        return abs(x1[0] - x2[0]) + abs(x1[1] - x2[1])
         raise NotImplementedError
 
     def draw(self, ax, grid_on=True, tick_step=[1, 1]):
@@ -80,6 +85,10 @@ class Grid2DStates(StateSpace):
 class GridStateTransition(StateTransition):
     def __call__(self, x, u):
         # TODO: Implement this function
+        x_new = []
+        for i in range(len(x)):
+            x_new.append(x[i] + u[i])
+        return tuple(x_new)
         raise NotImplementedError
 
 
@@ -92,6 +101,8 @@ class Grid2DActions(ActionSpace):
 
     def __call__(self, x):
         # TODO: Implement this function
+        possible_actions = [u for u in Grid2DActions.all_actions if self.X.__contains__(self.f(x, u))]
+        return possible_actions
         raise NotImplementedError
 
 
@@ -180,6 +191,9 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots()
     X.draw(ax)
-    draw_path(ax, result["path"])
-    mark_cell(ax, result["visited"])
-    plt.show()
+    if result == "FAILURE":
+        print("FAILURE!")
+    else:
+        draw_path(ax, result["path"])
+        mark_cell(ax, result["visited"])
+        plt.show()
