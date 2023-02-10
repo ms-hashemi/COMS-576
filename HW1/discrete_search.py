@@ -77,7 +77,8 @@ def fsearch(X, U, f, xI, XG, alg):
                 Q.insert(node)
         iteration = iteration + 1
     
-    return "FAILURE"
+    # return "FAILURE"
+    return dic
     raise NotImplementedError
 
 

@@ -191,9 +191,12 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots()
     X.draw(ax)
-    if result == "FAILURE":
-        print("FAILURE!")
-    else:
-        draw_path(ax, result["path"])
-        mark_cell(ax, result["visited"])
-        plt.show()
+    # if result == "FAILURE":
+    #     print("FAILURE!")
+    # else:
+    #     draw_path(ax, result["path"])
+    #     mark_cell(ax, result["visited"])
+    #     plt.show()
+    draw_path(ax, result["path"])
+    mark_cell(ax, result["visited"])
+    plt.show()
