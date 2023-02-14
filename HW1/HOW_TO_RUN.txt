@@ -1,0 +1,19 @@
+COM S 576 MOTION STRATEGY ALGORITHMS AND APPLICATIONS
+HW1-General forward search algorithm and Path planning with 2D grid
+
+By Mohammd Hashemi
+2/11/2023
+
+How to run:
+All necessary codes have been uploaded in the current directory. A few additional Python library have been used for task 1 
+in "discrete_search.py" code. These libraries are basic and most probably inculded within a basic Python installation.
+
+To run the package, the main python script "hw1.py" should be run with the required arguments of the 2D-grid space ".json" file,
+the type of search algorithm (strings of "bfs", "dfs", or "astar") for path planning precedded by the flag "--alg", and the desired 
+output "json" file precedded by the flag "--alg". So, a typical command to run the package and get a result should look like the following:
+
+python hw1.py hw1_grid.json --alg bfs --out hw1_bfs.json
+
+I have saved the dictionary results of each algorithm given the specific search problem of the assignment. The expected results have
+the suffix of "_solution" in their file names. BFS and DFS solutions of mine are the same, but ASTAR lead to a different result as 
+the specific implementation may differ. Nevertheless, I think the alggorithm for ASTAR has been implemented correctly in my code.
