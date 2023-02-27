@@ -13,25 +13,17 @@ def publish(config, W, L, D):
     @type D: float, the distance between the two points of attachment on each link
     """
     # TODO: Implement this function
+    # Done similar to the talker node in Lab5!
     from cs476.msg import Chain2D
-    pub = rospy.Publisher('chain_config', Chain2D, queue_size=1)
-    rospy.init_node('talker', anonymous=True)
-    rate = rospy.Rate(1) # 10hz
+    pub = rospy.Publisher('chain_config', Chain2D, queue_size=1) # queue_size=1 means there is only one message buffered
+    rospy.init_node('talker', anonymous=True) # Initializing the talker node
+    rate = rospy.Rate(1) # Frequency of broadcasting the message by the initialized talker node is 1 Hz.
     while not rospy.is_shutdown():
-    #     msg = {}
-    #     msg['x']=objPos[1]
-    #     msg['y']=objPos[2]
-    #     msg['z']=objPos[3]
-    #     simROS.publish(pub,msg)
-        # Chain2D.config = config
-        # Chain2D.W = W
-        # Chain2D.L = L
-        # Chain2D.D = D
         msg_config = [config[i] for i in range(len(config))]
         msg_W = W
         msg_L = L
         msg_D = D
-        pub.publish(msg_config, msg_W, msg_L, msg_D)
+        pub.publish(msg_config, msg_W, msg_L, msg_D) # Publishing the message according to "Chain2D.msg" format
         rate.sleep()
     # raise NotImplementedError
 

@@ -9,12 +9,12 @@ def get_chain_msg():
     This function will wait until a message is received.
     """
     # TODO: Implement this function
+    # Done similar to the listener node in Lab5!
     from cs476.msg import Chain2D
     
-    rospy.init_node("listener", anonymous=True)
-    msg = rospy.wait_for_message("chain_config", Chain2D)
-    # msg_str = " ".join(map(str, msg.nums))
-    # rospy.loginfo(rospy.get_caller_id() + " I heard %s", msg_str)
+    rospy.init_node("listener", anonymous=True) # Initializing the listener node
+    msg = rospy.wait_for_message("chain_config", Chain2D) # Wait for the talker and then catch the message "msg"
+    # Logging the received message
     rospy.loginfo(rospy.get_caller_id() + "\nConfig = %s\n     W = %s\n     L = %s\n     D = %s", msg.config, msg.W, msg.L, msg.D)
     return msg
     # raise NotImplementedError
