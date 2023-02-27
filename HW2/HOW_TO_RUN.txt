@@ -1,0 +1,20 @@
+COM S 576 MOTION STRATEGY ALGORITHMS AND APPLICATIONS
+HW2-Task3-Geometric Representations and Transformations
+
+By Mohammd Hashemi
+2/26/2023
+
+How to run:
+All requested source codes have been uploaded in the current directory. The "numpy" library have been used/imported for the math calculations
+in "hw2_chain_plotter.py" code.
+
+To run the package, first the "catkin" project should be built similar to the procedures mentioned in the lab assignments (Lab 2-5).
+Then "roscore" should be run a terminal, and there need to be two other terminals connected to the same docker container running.
+
+In the first one, after sourcing the package source file ("source ~/catkin_ws/devel/setup.bash"), the talker command should be run like:
+"rosrun cs476 hw2_chain_configurator.py 0.7853981633974483 1.5707963267948966 -0.7853981633974483 -W 2 -L 12 -D 10"
+as mentioned in the assignment.
+
+In the second one, after sourcing the package source file ("source ~/catkin_ws/devel/setup.bash"), the listener command should be run like
+"rosrun cs476 hw2_chain_plotter.py"
+as mentioned in the assignment.
