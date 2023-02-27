@@ -13,7 +13,27 @@ def publish(config, W, L, D):
     @type D: float, the distance between the two points of attachment on each link
     """
     # TODO: Implement this function
-    raise NotImplementedError
+    from cs476.msg import Chain2D
+    pub = rospy.Publisher('chain_config', Chain2D, queue_size=1)
+    rospy.init_node('talker', anonymous=True)
+    rate = rospy.Rate(1) # 10hz
+    while not rospy.is_shutdown():
+    #     msg = {}
+    #     msg['x']=objPos[1]
+    #     msg['y']=objPos[2]
+    #     msg['z']=objPos[3]
+    #     simROS.publish(pub,msg)
+        # Chain2D.config = config
+        # Chain2D.W = W
+        # Chain2D.L = L
+        # Chain2D.D = D
+        msg_config = [config[i] for i in range(len(config))]
+        msg_W = W
+        msg_L = L
+        msg_D = D
+        pub.publish(msg_config, msg_W, msg_L, msg_D)
+        rate.sleep()
+    # raise NotImplementedError
 
 
 def parse_args():
