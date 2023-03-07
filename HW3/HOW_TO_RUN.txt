@@ -1,0 +1,18 @@
+COM S 576 MOTION STRATEGY ALGORITHMS AND APPLICATIONS
+HW3-C-Space and C-Space Obstacles
+
+By Mohammd Hashemi
+3/07/2023
+
+How to run:
+All requested source codes have been uploaded in the current directory. The "numpy" library has been used for the math calculations
+in "hw2_chain_plotter.py" and "hw3.py" scripts. Also, "shapely" library has been used in "hw3.py" to find the possible intersections
+between the robot (or its transformed config) and the obstacles. "hw2_chain_plotter.py" has been imported to conduct the transformations.
+
+The whole script can be run through the following command almost as mentioned in the assignment statement:
+"python3 hw3.py hw3_world.json --out hw3_out.json"
+
+The results will show up as expected during the compilation (the figure of the world and written json file containing the world config
+and the path from XI to XG). To see the result of Task3 piece of code as mentioned in the source code, close the output/world figure first.
+Its result will be printed out in the terminal (given the assignment inputs, it is an empty list based on my experiment).
+
