@@ -1,0 +1,44 @@
+COM S 576 MOTION STRATEGY ALGORITHMS AND APPLICATIONS
+HW4-Finding Paths Using PRM and RRT
+
+By Mohammd Hashemi
+4/01/2023
+
+How to run:
+
+All required source codes have been uploaded in the current directory. Some were provided by the Professor 
+("draw_cspace.py"), some were written/provided in the previous assignments of this class ("discrete_search.py"
+and fragments of "graph.py"), and the rest were written for the first time for this assignment.
+The only non-trivial/not-installed-by-default Python packages/libraries used in this project are "numpy" for 
+some math calculations and "matplotlib" for plotting the planning figures.
+
+The whole project can be run through the following command:
+"python[3] hw4.py hw4_world.json [--out hw3_out.json]"
+
+In the above command, the third/output argument is optional (useless in the current version!). The second 
+argument ("hw4_world.json") is necessary as it contains the basic inputs (e.g., the 2D world dimensions and the
+semi-circle obstacles) and hyperparamters of the project (e.g., maximum number of iterations in the algorithms)
+
+Full description of the input json file:
+O:                        the obstacles (semi-circles in this assignment, each represented by [[center_x, center_y], 
+                          radius])
+dt:                       a parameter defined in the assignment to change the radius of semi-circle obstacles like 
+                          radius-dt
+ORIGIN:                   the coordinates of the center of the rectangular world
+W:                        the total width of the 2D world
+H:                        the total height of the 2D world
+QUERIES:                  a list of queries; each query is a list of two lists: qI (containing its two 
+                          coordinates) and qG
+MAX_SAMPLES:              maximum number of iterations to run the sampling-based motion planning algorithms
+                          RRT and PRM
+RESOLUTION:               the minimum step/descretization size used to find the possible collisions with obstacles 
+                          in the prospective graph edges to be added
+PROBABILITY_CONNECT_GOAL: the probablity by which RRT algorithm randomly choose to add the goal point as the new 
+                          alpha_i vertex to the graph (which may get connected to the whole RRT tree or not after
+                          that iteration)
+K:                        the number used in the PRM algorithm to find the K-nearest neighbors of the newly-added 
+                          vertex alpha_i
+
+The results of each part of the assignment should show up successively as texts in the command line (e.g., the
+paths if they have been requested and found in the current code run) and as plots. In order to advance to the 
+next part, the plot of each section must be closed.
