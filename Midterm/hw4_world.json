@@ -1,0 +1,15 @@
+{
+    "O": [
+        [[ 0,  1], 1],
+        [[ 0, -1], 1]
+    ],
+    "dt": 0.02,
+    "ORIGIN": [0, 0],
+    "W": 6,
+    "H": 2,
+    "QUERIES": [[[-2, -0.5], [2, -0.5]]],
+    "MAX_SAMPLES": 100,
+    "RESOLUTION": 0.1,
+    "PROBABILITY_CONNECT_GOAL": 0.01,
+    "K": 15
+}
