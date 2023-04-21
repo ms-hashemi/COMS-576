@@ -1,0 +1,49 @@
+COM S 576 MOTION STRATEGY ALGORITHMS AND APPLICATIONS
+Midterm-Problem 1
+
+By Mohammd Hashemi
+4/08/2023
+
+How to run:
+
+All required source codes have been uploaded in the current directory. Some were provided by the Professor 
+("draw_cspace.py"), and some were written/provided in the previous assignments of this class, with some
+parts modified for the current project.
+The only non-trivial/not-installed-by-default Python packages/libraries used in this project are "shapely"
+for collision checks with rectangle obstacles of Problem 1, "numpy" for some math calculations, and
+"matplotlib" for plotting the planning figures.
+
+The whole project can be run through the following command:
+"python[3] midterm.py midterm_world.json [--out midterm_out.json]"
+
+In the above command, the third/output argument is optional. The second argument ("midterm_world.json") is 
+necessary as it contains the basic inputs (e.g., the 2D world dimensions and the rectangle obstacles) and 
+hyperparamters of the project (e.g., the maximum number of iterations in the algorithms).
+
+Full description of the input json file (from HW4):
+O:                        the obstacles (semi-circles in HW4, each represented by [[center_x, center_y], 
+                          radius]; rectangles in Midterm, each represented by a list of four vertex coordinates)
+dt:                       a parameter defined in the assignment to change the radius of semi-circle obstacles like 
+                          radius-dt (HW4)
+ORIGIN:                   the coordinates of the center of the rectangular world (HW4)
+W:                        the total width of the 2D world (HW4)/the width of robot linkages (Midterm)
+H:                        the total height of the 2D world/the dimension length of the world (2*PI in Midterm)
+L:                        the total width of the 2D world (HW4)/the width of robot linkages (Midterm)
+D:                        the total width of the 2D world (HW4)/the width of robot linkages (Midterm)
+QUERIES:                  a list of queries; each query is a list of two lists: qI (containing its two 
+                          coordinates) and qG (HW4)
+xI:                       the initial configuration/state of the problem (Midterm)
+xI:                       the goal configuration/state of the problem (Midterm)
+MAX_SAMPLES:              maximum number of iterations to run the sampling-based motion planning algorithms
+                          RRT and PRM (HW4)
+RESOLUTION:               the minimum step/descretization size used to find the possible collisions with obstacles 
+                          in the prospective graph edges to be added (HW4)
+PROBABILITY_CONNECT_GOAL: the probablity by which RRT algorithm randomly choose to add the goal point as the new 
+                          alpha_i vertex to the graph (which may get connected to the whole RRT tree or not after
+                          that iteration) (HW4)
+K:                        the number used in the PRM algorithm to find the K-nearest neighbors of the newly-added 
+                          vertex alpha_i (HW4)
+
+The results of each part (only one in Midterm) should show up successively as texts in the command line (e.g., the
+paths if they have been requested and found in the current code run) and as plots. In order to advance to the 
+next part, the plot of each section must be closed. If no path is found, an empty list ("[]") is printed out.
