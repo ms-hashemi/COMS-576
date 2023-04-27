@@ -87,15 +87,24 @@ def parse_desc(desc):
         K = data["K"]
     except:
         K = 15
-    return (O, dt, ORIGIN, W, H, L, D, QUERIES, MAX_SAMPLES, RESOLUTION, PROBABILITY_CONNECT_GOAL, K)
+    try:
+        MIN_TURNING_RADIUS = data["MIN_TURNING_RADIUS"]
+    except:
+        MIN_TURNING_RADIUS = 0
+    try:
+        PHI_MAX = data["PHI_MAX"]
+    except:
+        PHI_MAX = 0
+    return (O, dt, ORIGIN, W, H, L, D, QUERIES, MAX_SAMPLES, RESOLUTION, PROBABILITY_CONNECT_GOAL, K, MIN_TURNING_RADIUS, PHI_MAX)
 
 
 class search_space(object):
     """A class to find feasible samples in the world"""
-    def __init__(self, world, obstacles):
+    def __init__(self, world, obstacles, PHI_MAX = 0):
         """Initializing the class properties"""
         self.world = world
         self.obstacles = obstacles
+        self.PHI_MAX = PHI_MAX
 
     def empty_collision_checker(self, q):
         """Returns True if the vertex or state q is inside the world boundaries; otherwise, False"""
@@ -113,8 +122,13 @@ class search_space(object):
 
     def sample(self):
         """Returns a random (2D) sample inside the world boundaries"""
-        bounds = np.array(self.world.get_bounds())
-        return tuple(np.random.uniform(bounds[:, 0], bounds[:, 1]))
+        if self.PHI_MAX == 0:
+            bounds = np.array(self.world.get_bounds())
+            return tuple(np.random.uniform(bounds[:, 0], bounds[:, 1]))
+        else:
+            bounds = np.array(self.world.get_bounds() + [(-abs(self.PHI_MAX), abs(self.PHI_MAX))])
+            return tuple(np.random.uniform(bounds[:, 0], bounds[:, 1]))
+
 
     def sample_free(self):
         """Loops until it finds a feasible/collision-free sample of the world"""
@@ -124,44 +138,64 @@ class search_space(object):
                 return q
 
 
-def stopping_config(s, q1_line, q2_line, delta_q):
+def stopping_config(s, d, q1_line, q2_line):
     """Auxiliary function for RRT to find the point on the new edge before obstacle"""
-    direction = []
-    length = geometry.get_euclidean_distance(q1_line, q2_line)
-    for i in range(len(q1_line)):
-        direction.append((q2_line[i]-q1_line[i])/length)
-    i = 0
-    qs = list(copy.deepcopy(q1_line))
-    qs_new = list(copy.deepcopy(q1_line))
-    while length > 0:
-        if length < delta_q and i > 0:
-            for j in range(len(q2_line)):
-                qs_new[j] = q2_line[j]
-            if s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new):
-                return tuple(qs_new)
+    if d.edge_type == 'straight':
+        delta_q = d.step_size
+        direction = []
+        length = d.get_distance(q1_line, q2_line)
+        for i in range(len(q1_line)):
+            direction.append((q2_line[i]-q1_line[i])/length)
+        i = 0
+        qs = list(copy.deepcopy(q1_line))
+        qs_new = list(copy.deepcopy(q1_line))
+        while length > 0:
+            if length < delta_q and i > 0:
+                for j in range(len(q2_line)):
+                    qs_new[j] = q2_line[j]
+                if s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new):
+                    return tuple(qs_new)
+                else:
+                    return tuple(qs)
             else:
-                return tuple(qs)
-        else:
-            for j in range(len(q1_line)):
-                qs_new[j] = q1_line[j] + i * delta_q * direction[j]
+                for j in range(len(q1_line)):
+                    qs_new[j] = q1_line[j] + i * delta_q * direction[j]
+                if s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new):
+                    qs = copy.deepcopy(qs_new)
+                else:
+                    return tuple(qs)
+                length = length - delta_q
+                i = i + 1
+        return tuple(qs)
+    elif d.edge_type == 'dubins':
+        qs = list(copy.deepcopy(q1_line))
+        qs_new = list(copy.deepcopy(q1_line))
+        local_path = d.get_local_path(q1_line, q2_line) 
+        for i in range(len(local_path[0])):
+            qs_new[0] = local_path[0][i]
+            qs_new[1] = local_path[1][i]
+            qs_new[2] = local_path[2][i]
             if s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new):
                 qs = copy.deepcopy(qs_new)
             else:
                 return tuple(qs)
-            length = length - delta_q
-            i = i + 1
-    return tuple(qs)
+        return tuple(qs)
 
 
-def RRT(world, obstacles, query, max_samples = 1000, resolution = 0.1, p = 0.01):
+def RRT(world, obstacles, query, max_samples = 1000, resolution = 0.1, p = 0.01, MIN_TURNING_RADIUS = 0, PHI_MAX = 0):
     """Main RRT function which generates an exploring tree and possibly a tree connecting qI to qG as
     defined by query (if query is empty, it just generates the tree)
     
     @returns: a tuple of the exploring tree "g" and the found "path" ("path" is empty if there is no
               query or the path could not be found given the maximum sampling iterations).
     """
-    s = search_space(world, obstacles)
-    g = graph.Graph()
+    s = search_space(world, obstacles, PHI_MAX)
+    if MIN_TURNING_RADIUS == 0:
+        edge_type = 'straight'
+    else:
+        edge_type = 'dubins'
+    d = geometry.distance_computator(edge_type, resolution, MIN_TURNING_RADIUS)
+    g = graph.Graph(if_tree = True)
     if query is None:
         qI = s.sample_free()
         qG = s.sample_free()
@@ -173,7 +207,7 @@ def RRT(world, obstacles, query, max_samples = 1000, resolution = 0.1, p = 0.01)
     path = []
     if query is not None: # If there is a specific query or tuple of (qI, qG) as the target of the algorithm
         for i in range(max_samples):
-            if i > 0 and i % 50 == 0: # Periodically try to connect to qG
+            if i > 0 and i % 2 == 0: # Periodically try to connect to qG
                 alpha_i = qG
             else: # Probablistically (1% by default) try to connect to qG
                 if np.random.uniform(0, 1) > p:
@@ -186,17 +220,17 @@ def RRT(world, obstacles, query, max_samples = 1000, resolution = 0.1, p = 0.01)
             parent = {"id": 0, "config": qI}
             edge_index = 0
             for counter, edge in enumerate(g.edges): # Loop over the edges to find the closest point of the tree (qn) to alpha_i
-                (q, distance) = geometry.get_nearest_point_on_line(g.vertices[edge[0]]["config"], g.vertices[edge[1]]["config"], alpha_i, resolution)
+                (q, distance) = d.get_nearest_on_edge(g.vertices[edge[0]]["config"], g.vertices[edge[1]]["config"], alpha_i)
                 if distance < min_distance:
                     min_distance = distance
                     qn = copy.deepcopy(q)
-                    vertex = {"id": edge[0], "config": g.vertices[edge[0]]["config"]}
-                    parent = {"id": edge[1], "config": g.vertices[edge[1]]["config"]}
+                    vertex = {"id": edge[1], "config": g.vertices[edge[1]]["config"]}
+                    parent = {"id": edge[0], "config": g.vertices[edge[0]]["config"]}
                     edge_index = counter
-            qs = stopping_config(s, qn, alpha_i, resolution) # Find the last feasible/obstacle-free config (qs) along an imaginary edge/line segment from qn towards alpha_i
+            qs = stopping_config(s, d, qn, alpha_i) # Find the last feasible/obstacle-free config (qs) along an imaginary edge/line segment from qn towards alpha_i
             id_new = 0
             if qs != qn: # Check if qs is different than qn (if not, no change is needed in the tree)
-                if qn != vertex["config"] and qn != parent["config"]: # Check if qn is located on one of the tree vertices; if not, it is located in the tree swath or on one edge between "vertex" and "parent" nodes
+                if np.linalg.norm(np.array(qn[:-1])-np.array(vertex["config"][:-1])) >= 0.1*resolution and np.linalg.norm(np.array(qn[:-1])-np.array(parent["config"][:-1])) >= 0.1*resolution: # Check if qn is located on one of the tree vertices; if not, it is located in the tree swath or on one edge between "vertex" and "parent" nodes
                     # Split the edge on which qn is located
                     del g.edges[edge_index]
                     g.adjacency[vertex["id"]].remove(parent["id"])
@@ -212,15 +246,15 @@ def RRT(world, obstacles, query, max_samples = 1000, resolution = 0.1, p = 0.01)
                     id_new = g.number_vertices
                     g.add_vertex({"id": id_new, "config": qs})
                     g.add_edge({"id": id_new, "config": qs}, {"id": id, "config": qn})
-                elif qn == vertex["config"]: # Check if qn is located on "vertex"; if yes, do not add qn as a new vertex, just connect qs to qn (which is "vertex" node)
+                elif np.linalg.norm(np.array(qn[:-1])-np.array(vertex["config"][:-1])) < 0.1*resolution: # Check if qn is located on "vertex"; if yes, do not add qn as a new vertex, just connect qs to qn (which is "vertex" node)
                     id_new = g.number_vertices
                     g.add_vertex({"id": id_new, "config": qs})
                     g.add_edge({"id": id_new, "config": qs}, vertex)
-                elif qn == parent["config"]: # Check if qn is located on "parent"; if yes, do not add qn as a new vertex, just connect qs to qn (which is "parent" node)
+                elif np.linalg.norm(np.array(qn[:-1])-np.array(parent["config"][:-1])) < 0.1*resolution: # Check if qn is located on "parent"; if yes, do not add qn as a new vertex, just connect qs to qn (which is "parent" node)
                     id_new = g.number_vertices
                     g.add_vertex({"id": id_new, "config": qs})
                     g.add_edge({"id": id_new, "config": qs}, parent)
-            if qs == qG: # Check if qs is equal to the goal configuration qG; if yes, find the path from qI to qG
+            if np.linalg.norm(np.array(qs[:-1])-np.array(qG[:-1])) < 0.1*resolution: # Check if qs is equal to the goal configuration qG; if yes, find the path from qI to qG
                 # The path finding algorithm is easy since RRT makes sure that the graph is Tree (each vertex has only one parent vertex) and the parent is stored as the first vertex id in the graph adjacency list
                 path.append(id_new) # Begin from the last added vertex (with "id" = "id_new" and "config" = qs = qG)
                 current = id_new
@@ -242,14 +276,14 @@ def RRT(world, obstacles, query, max_samples = 1000, resolution = 0.1, p = 0.01)
             parent = {"id": g.number_vertices, "config": qI}
             edge_index = 0
             for counter, edge in enumerate(g.edges):
-                (q, distance) = geometry.get_nearest_point_on_line(g.vertices[edge[0]]["config"], g.vertices[edge[1]]["config"], alpha_i, resolution)
+                (q, distance) = d.get_nearest_on_edge(g.vertices[edge[0]]["config"], g.vertices[edge[1]]["config"], alpha_i)
                 if distance < min_distance:
                     min_distance = distance
                     qn = copy.deepcopy(q)
-                    vertex = {"id": edge[0], "config": g.vertices[edge[0]]["config"]}
-                    parent = {"id": edge[1], "config": g.vertices[edge[1]]["config"]}
+                    vertex = {"id": edge[1], "config": g.vertices[edge[1]]["config"]}
+                    parent = {"id": edge[0], "config": g.vertices[edge[0]]["config"]}
                     edge_index = counter
-            qs = stopping_config(s, qn, alpha_i, resolution)
+            qs = stopping_config(s, d, qn, alpha_i)
             if qs != qn:
                 if qn != vertex["config"] and qn != parent["config"]:
                     del g.edges[edge_index]
@@ -273,89 +307,149 @@ def RRT(world, obstacles, query, max_samples = 1000, resolution = 0.1, p = 0.01)
     return (g, path)
 
 
-def connect(s, q1_line, q2_line, delta_q): # Not used in the Midterm!
+def connect(s, d, q1_line, q2_line):
     """Auxiliary function to PRM to check if q1_line can be connected to q2_line without any collsions with
     the obstacles as encoded inside the "s" object"""
-    direction = []
-    length = geometry.get_euclidean_distance(q1_line, q2_line)
-    for i in range(len(q1_line)):
-        direction.append((q2_line[i]-q1_line[i])/length)
-    i = 0
-    qs_new = list(copy.deepcopy(q1_line))
-    while length > 0:
-        if length < delta_q and i > 0:
-            for j in range(len(q2_line)):
-                qs_new[j] = q2_line[j]
-            if s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new):
-                return True
+    if d.edge_type == 'straight':
+        delta_q = d.step_size
+        direction = []
+        length = d.get_distance(q1_line, q2_line)
+        for i in range(len(q1_line)):
+            direction.append((q2_line[i]-q1_line[i])/length)
+        i = 0
+        qs_new = list(copy.deepcopy(q1_line))
+        while length > 0:
+            if length < delta_q and i > 0:
+                for j in range(len(q2_line)):
+                    qs_new[j] = q2_line[j]
+                if s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new):
+                    return True
+                else:
+                    return False
             else:
+                for j in range(len(q1_line)):
+                    qs_new[j] = q1_line[j] + i * delta_q * direction[j]
+                if not (s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new)):
+                    return False
+                length = length - delta_q
+                i = i + 1
+        return True
+    elif d.edge_type == 'dubins':
+        qs_new = list(copy.deepcopy(q1_line))
+        local_path = d.get_local_path(q1_line, q2_line) 
+        for i in range(len(local_path[0])):
+            qs_new[0] = local_path[0][i]
+            qs_new[1] = local_path[1][i]
+            qs_new[2] = local_path[2][i]
+            if not(s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new)):
                 return False
-        else:
-            for j in range(len(q1_line)):
-                qs_new[j] = q1_line[j] + i * delta_q * direction[j]
-            if not (s.empty_collision_checker(qs_new) and s.obstacle_free(qs_new)):
-                return False
-            length = length - delta_q
-            i = i + 1
-    return True
+        return True
 
 
-def PRM(world, obstacles, query, max_samples = 1000, resolution = 0.1, k = 15): # Not used in the Midterm!
+def PRM(world, obstacles, query, max_samples = 1000, resolution = 0.1, k = 15, MIN_TURNING_RADIUS = 0, PHI_MAX = 0): # Not used in the Midterm!
     """Main PRM function which generates an exploring graph and possibly a path connecting qI to qG as
     defined by query (if query is empty, it just generates the graph)
     
     @returns: a tuple of the exploring graph "g" and the found "path" ("path" is empty if there is no
               query or the path could not be found given the maximum sampling iterations).
     """
-    s = search_space(world, obstacles)
-    g = graph.Graph()
+    s = search_space(world, obstacles, PHI_MAX)
+    if MIN_TURNING_RADIUS == 0:
+        edge_type = 'straight'
+    else:
+        edge_type = 'dubins'
+    d = geometry.distance_computator(edge_type, resolution, MIN_TURNING_RADIUS)
+    g = graph.Graph(if_tree = False)
 
     path = []
     alpha_i = s.sample_free()
-    g.add_vertex(alpha_i)
+    id = copy.deepcopy(g.number_vertices)
+    g.add_vertex({"id": id, "config": alpha_i})
+    # g.add_edge({"id": id, "config": qn}, parent)
     for i in range(1, max_samples):
         alpha_i = s.sample_free()
-        g.add_vertex(alpha_i)
+        id = copy.deepcopy(g.number_vertices)
+        g.add_vertex({"id": id, "config": alpha_i})
         distances = [0]*len(g.vertices)
         for i in range(len(g.vertices)):
-            distances[i] = geometry.get_euclidean_distance(g.vertices[i], alpha_i)
+            distances[i] = d.get_distance(g.vertices[i]["config"], alpha_i)
         vertices = [vertex for _, vertex in sorted(zip(distances, g.vertices), key=lambda pair: pair[0])]
         limit = k + 1 if len(vertices) >= k + 1 else len(vertices)
         for i in range(1, limit):
-            if not(g.same_component(alpha_i, vertices[i], k)) and connect(s, vertices[i], alpha_i, resolution):
-                g.add_edge(alpha_i, vertices[i])
+            if not(g.same_component({"id": id, "config": alpha_i}, vertices[i], k)) and connect(s, d, vertices[i]["config"], alpha_i):
+                g.add_edge({"id": id, "config": alpha_i}, vertices[i])
+        if edge_type == 'dubins'  and len(g.adjacency[id]) < k:
+            distances = [0]*len(g.vertices)
+            for i in range(len(g.vertices)):
+                distances[i] = d.get_distance(alpha_i, g.vertices[i]["config"])
+            vertices = [vertex for _, vertex in sorted(zip(distances, g.vertices), key=lambda pair: pair[0])]
+            limit = k + 1 if len(vertices) >= k + 1 else len(vertices)
+            for i in range(1, limit):
+                if not(g.same_component({"id": id, "config": alpha_i}, vertices[i], k)) and connect(s, d, alpha_i, vertices[i]["config"]):
+                    g.add_edge(vertices[i], {"id": id, "config": alpha_i})
+    
     if query is not None:
         qI = tuple(query[0])
         qG = tuple(query[1])
 
         alpha_i = qI
-        if alpha_i not in g.vertices:
-            g.add_vertex(alpha_i)
+        id_qI = None
+        for i in range(len(g.vertices)):
+            if qI == g.vertices[i]["config"]:
+                id_qI = copy.deepcopy(i)
+        if id_qI is None:
+            id = copy.deepcopy(g.number_vertices)
+            id_qI = copy.deepcopy(id)
+            g.add_vertex({"id": id, "config": alpha_i})
             distances = [0]*len(g.vertices)
             for i in range(len(g.vertices)):
-                distances[i] = geometry.get_euclidean_distance(g.vertices[i], alpha_i)
+                distances[i] = d.get_distance(alpha_i, g.vertices[i]["config"])
             vertices = [vertex for _, vertex in sorted(zip(distances, g.vertices), key=lambda pair: pair[0])]
             limit = k + 1 if len(vertices) >= k + 1 else len(vertices)
             for i in range(1, limit):
-                if not(g.same_component(alpha_i, vertices[i], k)) and connect(s, vertices[i], alpha_i, resolution):
-                    g.add_edge(alpha_i, vertices[i])
+                if not(g.same_component({"id": id, "config": alpha_i}, vertices[i], k)) and connect(s, d, alpha_i, vertices[i]["config"]):
+                    g.add_edge(vertices[i], {"id": id, "config": alpha_i})
+            if edge_type == 'dubins'  and len(g.adjacency[id]) < k:
+                distances = [0]*len(g.vertices)
+                for i in range(len(g.vertices)):
+                    distances[i] = d.get_distance(g.vertices[i]["config"], alpha_i)
+                vertices = [vertex for _, vertex in sorted(zip(distances, g.vertices), key=lambda pair: pair[0])]
+                limit = k + 1 if len(vertices) >= k + 1 else len(vertices)
+                for i in range(1, limit):
+                    if not(g.same_component({"id": id, "config": alpha_i}, vertices[i], k)) and connect(s, d, vertices[i]["config"], alpha_i):
+                        g.add_edge({"id": id, "config": alpha_i}, vertices[i])
         
         alpha_i = qG
-        if alpha_i not in g.vertices:
-            g.add_vertex(alpha_i)
+        id_qG = None
+        for i in range(len(g.vertices)):
+            if qG == g.vertices[i]["config"]:
+                id_qG = copy.deepcopy(i)
+        if id_qG is None:
+            id = copy.deepcopy(g.number_vertices)
+            id_qG = copy.deepcopy(id)
+            g.add_vertex({"id": id, "config": alpha_i})
             distances = [0]*len(g.vertices)
             for i in range(len(g.vertices)):
-                distances[i] = geometry.get_euclidean_distance(g.vertices[i], alpha_i)
+                distances[i] = d.get_distance(g.vertices[i]["config"], alpha_i)
             vertices = [vertex for _, vertex in sorted(zip(distances, g.vertices), key=lambda pair: pair[0])]
             limit = k + 1 if len(vertices) >= k + 1 else len(vertices)
             for i in range(1, limit):
-                if not(g.same_component(alpha_i, vertices[i], k)) and connect(s, vertices[i], alpha_i, resolution):
-                    g.add_edge(alpha_i, vertices[i])
+                if not(g.same_component({"id": id, "config": alpha_i}, vertices[i], k)) and connect(s, d, vertices[i]["config"], alpha_i):
+                    g.add_edge({"id": id, "config": alpha_i}, vertices[i])
+            if edge_type == 'dubins'  and len(g.adjacency[id]) < k:
+                distances = [0]*len(g.vertices)
+                for i in range(len(g.vertices)):
+                    distances[i] = d.get_distance(alpha_i, g.vertices[i]["config"])
+                vertices = [vertex for _, vertex in sorted(zip(distances, g.vertices), key=lambda pair: pair[0])]
+                limit = k + 1 if len(vertices) >= k + 1 else len(vertices)
+                for i in range(1, limit):
+                    if not(g.same_component({"id": id, "config": alpha_i}, vertices[i], k)) and connect(s, d, alpha_i, vertices[i]["config"]):
+                        g.add_edge(vertices[i], {"id": id, "config": alpha_i})
         
-        X = graph.Grid2DStates(g, world.get_bounds()[0][0], world.get_bounds()[0][1], world.get_bounds()[1][0], world.get_bounds()[1][1], [])
+        X = graph.Grid2DStates(g, d, world.get_bounds()[0][0], world.get_bounds()[0][1], world.get_bounds()[1][0], world.get_bounds()[1][1], [])
         f = graph.GridStateTransition(g)
         U = graph.Grid2DActions(X, f)
-        search_result = fsearch(X, U, f, qI, [qG], ALG_BFS)
+        search_result = fsearch(X, U, f, id_qI, [id_qG], ALG_BFS)
         path = search_result["path"]
     
     return (g, path)
@@ -364,7 +458,7 @@ def PRM(world, obstacles, query, max_samples = 1000, resolution = 0.1, k = 15): 
 if __name__ == "__main__":
     # Preprocessing: extracting the input and hyperparemeters used to run this project
     args = parse_args()
-    (O, dt, ORIGIN, W, H, L, D, QUERIES, MAX_SAMPLES, RESOLUTION, PROBABILITY_CONNECT_GOAL, K) = parse_desc(args.desc)
+    (O, dt, ORIGIN, W, H, L, D, QUERIES, MAX_SAMPLES, RESOLUTION, PROBABILITY_CONNECT_GOAL, K, MIN_TURNING_RADIUS, PHI_MAX) = parse_desc(args.desc)
     if L == 0:
         world = geometry.world_2D_obstacle(ORIGIN, W, H)
     else:
@@ -378,8 +472,15 @@ if __name__ == "__main__":
             c = geometry.rectangular_obstacle(O[i], W, L, D)
         obstacles.append(c)
         obstacles_boundary.append(c.get_boundary())
-    g = None
-    path = []
+    g1 = None
+    g2 = None
+    if MIN_TURNING_RADIUS == 0:
+        edge_type = 'straight'
+    else:
+        edge_type = 'dubins'
+    d = geometry.distance_computator(edge_type, RESOLUTION, MIN_TURNING_RADIUS)
+    path1 = []
+    path2 = []
 
     # # Part 1: RRT exploaration, neglecting obstacles (HW4)
     # fig, ax = plt.subplots()
@@ -397,28 +498,36 @@ if __name__ == "__main__":
 
     # RRT planning (modified from HW4)
     for i in range(len(QUERIES)):
-        fig, ax = plt.subplots()
-        [g, path] = RRT(world, obstacles, QUERIES[i], MAX_SAMPLES, RESOLUTION, PROBABILITY_CONNECT_GOAL)
-        X = graph.Grid2DStates(g, world.get_bounds()[0][0], world.get_bounds()[0][1], world.get_bounds()[1][0], world.get_bounds()[1][1], [])
-        draw(ax, world.get_bounds(), obstacles_boundary, tuple(QUERIES[i][0]), tuple(QUERIES[i][1]), X, [g.vertices[id]["config"] for id in path], title="RRT planning for a 2-link robot")
-        print(path)
+        fig1, ax1 = plt.subplots()
+        [g1, path1] = RRT(world, obstacles, QUERIES[i], MAX_SAMPLES, RESOLUTION, PROBABILITY_CONNECT_GOAL, MIN_TURNING_RADIUS, PHI_MAX)
+        X = graph.Grid2DStates(g1, d, world.get_bounds()[0][0], world.get_bounds()[0][1], world.get_bounds()[1][0], world.get_bounds()[1][1], [])
+        draw(ax1, world.get_bounds(), obstacles_boundary, tuple(QUERIES[i][0]), tuple(QUERIES[i][1]), X, [g1.vertices[id]["config"] for id in path1], title="RRT planning")
+        print(path1)
         plt.show()
 
     # PRM planning (modified from HW4)
     for i in range(len(QUERIES)):
-        fig, ax = plt.subplots()
-        [g, path] = PRM(world, obstacles, QUERIES[i], MAX_SAMPLES, RESOLUTION, K)
-        X = graph.Grid2DStates(g, world.get_bounds()[0][0], world.get_bounds()[0][1], world.get_bounds()[1][0], world.get_bounds()[1][1], [])
-        draw(ax, world.get_bounds(), obstacles_boundary, tuple(QUERIES[i][0]), tuple(QUERIES[i][1]), X, [g.vertices[id]["config"] for id in path], title="PRM planning")
-        print(path)
+        fig2, ax2 = plt.subplots()
+        [g2, path2] = PRM(world, obstacles, QUERIES[i], MAX_SAMPLES, RESOLUTION, K, MIN_TURNING_RADIUS, PHI_MAX)
+        X = graph.Grid2DStates(g2, d, world.get_bounds()[0][0], world.get_bounds()[0][1], world.get_bounds()[1][0], world.get_bounds()[1][1], [])
+        draw(ax2, world.get_bounds(), obstacles_boundary, tuple(QUERIES[i][0]), tuple(QUERIES[i][1]), X, [g2.vertices[id]["config"] for id in path2], title="PRM planning")
+        print(path2)
         plt.show()
     
     # Outputing the results as requested in the Midterm doc
-    if g is None:
-        result = {"vertices": None, "edges": None, "path": None}
+    if g1 is None:
+        result1 = {"vertices": None, "edges": None, "path": None}
     else:
-        result = {"vertices": g.vertices, "edges": g.edges, "path": path}
+        result1 = {"vertices": g1.vertices, "edges": g1.edges, "path": path1}
+    if g2 is None:
+        result2 = {"vertices": None, "edges": None, "path": None}
+    else:
+        result2 = {"vertices": g2.vertices, "edges": g2.edges, "path": path2}
 
+    json_data = {
+        'RRT': result1,
+        'PRM': result2
+    }
     with open(args.out, "w") as outfile:
-        json.dump(result, outfile)
+        json.dump(json_data, outfile)
 

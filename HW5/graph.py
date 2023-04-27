@@ -10,17 +10,19 @@ from discrete_search import (
     ActionSpace,
     StateTransition
 )
+import math
 
 
 class Graph(object):
     """A class defined to implement graph/tree data structure"""
 
-    def __init__(self):
+    def __init__(self, if_tree):
         """Initializing the graph by defining the object properties"""
         self.adjacency = []
         self.vertices = []
         self.edges = []
         self.number_vertices = 0
+        self.if_tree = if_tree
 
     def add_vertex(self, vertex):
         """
@@ -35,9 +37,12 @@ class Graph(object):
         Adds a new edge such that the "vertex" is connected to its "parent" vertex in the graph
         """
         if vertex["id"] < len(self.adjacency):
-            self.adjacency[vertex["id"]].insert(0, parent["id"])
-            self.adjacency[parent["id"]].append(vertex["id"])
-            self.edges.append([vertex["id"], parent["id"]])
+            if self.if_tree:
+                self.adjacency[vertex["id"]].insert(0, parent["id"])
+                self.adjacency[parent["id"]].append(vertex["id"])
+            else:
+                self.adjacency[parent["id"]].append(vertex["id"])
+            self.edges.append([parent["id"], vertex["id"]])
     
     def same_component(self, alpha_i, q, k):
         """
@@ -45,11 +50,11 @@ class Graph(object):
         an alternative function suggested in the reference book of the class. It considers the degree
         of the "q" vertex to determine whether the new vertex "alpha_i" should be connected to "q" or not.
         """
-        return not(len(self.adjacency[q]) < k)
+        return not(len(self.adjacency[q["id"]]) < k and len(self.adjacency[alpha_i["id"]]) < k) # and alpha_i["id"] not in self.adjacency[q["id"]]
 
 
 class Grid2DStates(StateSpace):
-    def __init__(self, graph, Xmin, Xmax, Ymin, Ymax, O):
+    def __init__(self, graph, d, Xmin, Xmax, Ymin, Ymax, O):
         """
         Xmin, Xmax, Ymin, Ymax: floats that defines the boundary of the world
         O:    a list of tuples that represent the grid points
@@ -57,6 +62,7 @@ class Grid2DStates(StateSpace):
               A tuple (i, j) in O means that grid point (i,j) is occupied.
         """
         self.graph = graph
+        self.d = d
         self.Xmin = Xmin
         self.Xmax = Xmax
         self.Ymin = Ymin
@@ -73,16 +79,27 @@ class Grid2DStates(StateSpace):
 
     def get_distance_lower_bound(self, x1, x2):
         # TODO: Implement this function
-        return ((x1[0] - x2[0])**2 + (x1[1] - x2[1])**2)**0.5
+        return self.d.get_distance(self.graph.vertices[x1]["config"], self.graph.vertices[x2]["config"])
         raise NotImplementedError
 
     def draw(self, ax):
         """A function used to draw the graph. It is called inside "draw_cspace.py" """
+        # arrow_length = 0.1
+        # head_width = 0.1
+        # fc="k"
+        # ec="k"
         if len(self.graph.vertices) > 0:
             for edge in self.graph.edges:
-                vertex = self.graph.vertices[edge[0]]["config"]
-                parent = self.graph.vertices[edge[1]]["config"]
-                ax.plot([vertex[0], parent[0]], [vertex[1], parent[1]], color='black')
+                parent = self.graph.vertices[edge[0]]["config"]
+                vertex = self.graph.vertices[edge[1]]["config"]
+                path_x, path_y, path_yaw = self.d.get_local_path(parent, vertex)
+                ax.plot(path_x, path_y, color='black')
+                ax.plot(parent[0], parent[1], marker=(3, 0, parent[2] * 180 / math.pi - 90), markersize=15, linestyle="None", markerfacecolor="black", markeredgecolor="black")
+                ax.plot(vertex[0], vertex[1], marker=(3, 0, vertex[2] * 180 / math.pi - 90), markersize=15, linestyle="None", markerfacecolor="black", markeredgecolor="black")
+                # x, y, yaw = path_x[0], path_y[0], path_yaw[0]
+                # ax.arrow(x, y, arrow_length * math.cos(yaw), arrow_length * math.sin(yaw), head_width=head_width, fc=fc, ec=ec)
+                # x, y, yaw = path_x[-1], path_y[-1], path_yaw[-1]
+                # ax.arrow(x, y, arrow_length * math.cos(yaw), arrow_length * math.sin(yaw), head_width=head_width, fc=fc, ec=ec)
 
 
 class GridStateTransition(StateTransition):

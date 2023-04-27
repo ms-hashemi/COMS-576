@@ -1,8 +1,8 @@
 COM S 576 MOTION STRATEGY ALGORITHMS AND APPLICATIONS
-Midterm-Problem 1
+HW5-Problem 1 and 2
 
 By Mohammd Hashemi
-4/08/2023
+4/21/2023
 
 How to run:
 
@@ -10,17 +10,17 @@ All required source codes have been uploaded in the current directory. Some were
 ("draw_cspace.py"), and some were written/provided in the previous assignments of this class, with some
 parts modified for the current project.
 The only non-trivial/not-installed-by-default Python packages/libraries used in this project are "shapely"
-for collision checks with rectangle obstacles of Problem 1, "numpy" for some math calculations, and
-"matplotlib" for plotting the planning figures.
+for collision checks with rectangle obstacles of Problem 1 from Midterm exam, "numpy" and "scipy" for some
+math calculations, and "matplotlib" for plotting the planning figures.
 
 The whole project can be run through the following command:
-"python[3] midterm.py midterm_world.json [--out midterm_out.json]"
+"python[3] hw5.py hw5_world.json [--out hw5_out.json]"
 
 In the above command, the third/output argument is optional. The second argument ("midterm_world.json") is 
 necessary as it contains the basic inputs (e.g., the 2D world dimensions and the rectangle obstacles) and 
 hyperparamters of the project (e.g., the maximum number of iterations in the algorithms).
 
-Full description of the input json file (from HW4):
+Full description of the input json file:
 O:                        the obstacles (semi-circles in HW4, each represented by [[center_x, center_y], 
                           radius]; rectangles in Midterm, each represented by a list of four vertex coordinates)
 dt:                       a parameter defined in the assignment to change the radius of semi-circle obstacles like 
@@ -43,7 +43,9 @@ PROBABILITY_CONNECT_GOAL: the probablity by which RRT algorithm randomly choose 
                           that iteration) (HW4)
 K:                        the number used in the PRM algorithm to find the K-nearest neighbors of the newly-added 
                           vertex alpha_i (HW4)
+MIN_TURNING_RADIUS:       as defined in the HW5 description
+PHI_MAX:                  as defined in the HW5 description
 
-The results of each part (only one in Midterm) should show up successively as texts in the command line (e.g., the
+The results of each part should show up successively as texts in the command line (e.g., the
 paths if they have been requested and found in the current code run) and as plots. In order to advance to the 
 next part, the plot of each section must be closed. If no path is found, an empty list ("[]") is printed out.

@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["hw1_grid.json", "--alg", "bfs", "--out", "hw1_bfs.json"],
+            "args": ["./HW5/hw5_world.json"],
             "justMyCode": true
         }
     ]

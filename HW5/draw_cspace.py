@@ -48,17 +48,24 @@ def draw(ax, cspace, obstacles, qI, qG, G, path, title=""):
                 markeredgecolor="red",
             )
     if len(path) > 0:
-        ax.plot(
-            [state[0] for state in path],
-            [state[1] for state in path],
-            "b-",
-            linewidth=5,
-        )
+        if len(path[0]) < 3:
+            ax.plot(
+                [state[0] for state in path],
+                [state[1] for state in path],
+                "b-",
+                linewidth=5,
+            )
+        else:
+            for i in range(len(path) - 1):
+                parent = path[i]
+                vertex = path[i + 1]
+                path_x, path_y, path_yaw = G.d.get_local_path(parent, vertex)
+                ax.plot(path_x, path_y, "b-", linewidth=4)            
     if len(title) > 0:
         ax.set_title(title, fontsize=20)
     # I added the following line to have axes titles as shown in the sample solution of Midterm doc
-    ax.set_xlabel(r"${\Theta_1}$(rad)")
-    ax.set_ylabel(r"${\Theta_2}$(rad)")
+    # ax.set_xlabel(r"${\Theta_1}$(rad)")
+    # ax.set_ylabel(r"${\Theta_2}$(rad)")
 
 
 def draw_cspace(ax, cspace, obstacles, tick_step=[1, 1]):

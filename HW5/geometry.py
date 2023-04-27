@@ -5,7 +5,7 @@ import shapely # A Python library for set-theoretic analysis and manipulation of
 # Importing "numpy" library for math functions ("sin", "cos") and matrix multiplication ("matmul")
 import numpy
 # For Dubins car path planning
-import dubins
+from dubins_path_planner import plan_dubins_path
 
 # Importing this code from HW2 for the transformations of the robot
 def get_link_positions(config, W, L, D):
@@ -145,24 +145,51 @@ def get_euclidean_distance(q1_line, q2_line):
     return length**0.5
 
 
-def is_inside_circle(q, center, radius):
-    """Checks whether "q" is inside/on the circle defined by "center" and "radius" """
-    return get_euclidean_distance(q, center) <= radius
-
-
 class distance_computator(object):
     """A general class to measure the distance between two configurations"""
     def __init__(self, edge_type, step_size, min_turning_radius):
         self.edge_type = edge_type
         self.step_size = step_size
         self.min_turning_radius = min_turning_radius
+        self.curvature = 1/min_turning_radius
 
     def get_distance(self, q1, q2):
-        if self.edge_type == 'dubins'
-        d = dubins.shortest_path(q1, q2, self.min_turning_radius)
-        return d.path_length()
-
-
+        if self.edge_type == 'dubins':
+            start_x, start_y, start_yaw = q1
+            end_x, end_y, end_yaw = q2
+            curvature = self.curvature
+            path_x, path_y, path_yaw, mode, lengths = plan_dubins_path(start_x, start_y, start_yaw, end_x, end_y, end_yaw, curvature)
+            return sum(lengths)
+        elif self.edge_type == 'straight':
+            return get_euclidean_distance(q1, q2)
+        
+    def get_nearest_on_edge(self, q1, q2, alpha_i):
+        if self.edge_type == 'dubins':
+            start_x, start_y, start_yaw = q1
+            end_x, end_y, end_yaw = q2
+            curvature = self.curvature
+            path_x, path_y, path_yaw, mode, lengths = plan_dubins_path(start_x, start_y, start_yaw, end_x, end_y, end_yaw, curvature)
+            min_distance = math.inf
+            qn = q1
+            for i in range(len(path_x)):
+                path_x2, path_y2, path_yaw2, mode2, lengths2 = plan_dubins_path(path_x[i], path_y[i], path_yaw[i], alpha_i[0], alpha_i[1], alpha_i[2], curvature)
+                if sum(lengths2) < min_distance:
+                    min_distance = sum(lengths2)
+                    qn = [path_x2[0], path_y2[0], path_yaw2[0]]
+            return (tuple(qn), min_distance)
+        elif self.edge_type == 'straight':
+            return get_nearest_point_on_line(q1, q2, alpha_i, self.step_size)
+        
+    def get_local_path(self, q1, q2):
+        if self.edge_type == 'dubins':
+            start_x, start_y, start_yaw = q1
+            end_x, end_y, end_yaw = q2
+            curvature = self.curvature
+            path_x, path_y, path_yaw, mode, lengths = plan_dubins_path(start_x, start_y, start_yaw, end_x, end_y, end_yaw, curvature)
+            return (path_x, path_y, path_yaw)
+        elif self.edge_type == 'straight':
+            return None
+            
 
 
 class obstacle(object):
