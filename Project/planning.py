@@ -187,8 +187,8 @@ def rrt_optimal(
             alpha = sample(cspace)
         vn = G.get_nearest(alpha, distance_computator, tol)
         qn = G.get_vertex_state(vn)
-        if vn not in costs:
-            costs[vn] = costs[G.parents[vn]] + G.edges[(G.parents[vn], vn)][0]
+        if i > 0 and vn not in costs:
+            costs[vn] = costs[G.parents[vn][0]] + G.edges[(G.parents[vn][0], vn)][0]
         (qs, edge) = stopping_configuration(
             qn, alpha, edge_creator, collision_checker, tol
         )
@@ -223,7 +223,7 @@ def rrt_optimal(
                 edge1 = edge_creator.make_edge(qs, q_n)
                 cost = costs[vs] + edge1.get_cost()
                 if connect(qs, q_n, edge_creator, collision_checker, tol) and cost < costs[v_n]:
-                    G.remove_edge((G.parents[v_n], v_n))
+                    G.remove_edge((G.parents[v_n][0], v_n))
                     G.add_edge(vs, v_n, edge_creator.make_edge(qs, q_n))
                     costs[v_n] = cost
 
