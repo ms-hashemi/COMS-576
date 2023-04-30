@@ -3,7 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from planning import (
     rrt,
+    rrt_optimal,
     prm,
+    prm_optimal,
     EdgeCreator,
     DistanceComputator,
     ObstacleCollisionChecker,
@@ -15,6 +17,8 @@ from draw_cspace import draw
 
 ALG_RRT = "rrt"
 ALG_PRM = "prm"
+ALG_RRT_OPTIMAL = "rrt_optimal"
+ALG_PRM_OPTIMAL = "prm_optimal"
 
 
 class DubinsEdgeCreator(EdgeCreator):
@@ -184,9 +188,30 @@ if __name__ == "__main__":
             distance_computator=distance_computator,
             collision_checker=collision_checker,
         )
-    else:
+    elif args.alg == ALG_RRT_OPTIMAL:
+        title = "RRT_OPTIMAL planning"
+        (G, root, goal) = rrt_optimal(
+            cspace=cspace,
+            qI=qI,
+            qG=qG,
+            edge_creator=edge_creator,
+            distance_computator=distance_computator,
+            collision_checker=collision_checker,
+        )
+    elif args.alg == ALG_PRM:
         title = "PRM planning"
         (G, root, goal) = prm(
+            cspace=cspace,
+            qI=qI,
+            qG=qG,
+            edge_creator=edge_creator,
+            distance_computator=distance_computator,
+            collision_checker=collision_checker,
+            k=15,
+        )
+    elif args.alg == ALG_PRM_OPTIMAL:
+        title = "PRM_OPTIMAL planning"
+        (G, root, goal) = prm_optimal(
             cspace=cspace,
             qI=qI,
             qG=qG,

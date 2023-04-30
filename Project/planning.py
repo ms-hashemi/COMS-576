@@ -142,6 +142,90 @@ def rrt(
     return (G, root, None)
 
 
+def rrt_optimal(
+    cspace,
+    qI,
+    qG,
+    edge_creator,
+    distance_computator,
+    collision_checker,
+    pG=0.1,
+    numIt=100,
+    tol=1e-3,
+):
+    """RRT with obstacles
+
+    @type cspace: a list of tuples (smin, smax) indicating that the C-space
+        is given by the product of the tuples.
+    @type qI: a tuple (x, y) indicating the initial configuration.
+    @type qG: a typle (x, y) indicating the goal configuation
+        (can be None if rrt is only used to explore the C-space).
+    @type edge_creator: an EdgeCreator object that includes the make_edge(s1, s2) function,
+        which returns an Edge object beginning at state s1 and ending at state s2.
+    @type distance_computator: a DistanceComputator object that includes the get_distance(s1, s2)
+        function, which returns the distance between s1 and s2.
+    @type collision_checker: a CollisionChecker object that includes the is_in_collision(s)
+        function, which returns whether the state s is in collision.
+    @type pG: a float indicating the probability of choosing the goal configuration.
+    @type numIt: an integer indicating the maximum number of iterations.
+    @type tol: a float, indicating the tolerance on the euclidean distance when checking whether
+        2 states are the same
+
+    @return (G, root, goal) where G is the tree, root is the id of the root vertex
+        and goal is the id of the goal vertex (if one exists in the tree; otherwise goal will be None).
+    """
+    import copy
+    G = Tree()
+    costs = {}
+    root = G.add_vertex(np.array(qI))
+    costs[root] = 0
+    for i in range(numIt):
+        use_goal = qG is not None and random.uniform(0, 1) <= pG
+        if use_goal:
+            alpha = np.array(qG)
+        else:
+            alpha = sample(cspace)
+        vn = G.get_nearest(alpha, distance_computator, tol)
+        qn = G.get_vertex_state(vn)
+        if vn not in costs:
+            costs[vn] = costs[G.parents[vn]] + G.edges[(G.parents[vn], vn)][0]
+        (qs, edge) = stopping_configuration(
+            qn, alpha, edge_creator, collision_checker, tol
+        )
+        if qs is None or edge is None:
+            continue
+        dist = get_euclidean_distance(qn, qs)
+        if dist > tol:
+            neighbors = G.get_nearest_vertices(qs, int(np.ceil((2*np.exp(1)+0.001)*np.log(len(G.vertices)))), distance_computator)
+            vs = G.add_vertex(qs)
+            v_min = copy.deepcopy(vn); q_min = copy.deepcopy(qn); c_min = costs[vn] + edge.get_cost()
+            
+            # Connect along a minimum-cost path
+            for v_n in neighbors:
+                q_n = G.get_vertex_state(v_n)
+                edge1 = edge_creator.make_edge(q_n, qs)
+                cost = costs[v_n] + edge1.get_cost()
+                if connect(q_n, qs, edge_creator, collision_checker, tol) and cost < c_min:
+                    v_min = copy.deepcopy(v_n); q_min = copy.deepcopy(q_n); c_min = copy.deepcopy(cost)
+            G.add_edge(v_min, vs, edge_creator.make_edge(q_min, qs))
+            costs[vs] = c_min
+
+            if use_goal and get_euclidean_distance(qs, qG) < tol:
+                return (G, root, vs)
+            
+            # Rewire the tree
+            for v_n in neighbors:
+                q_n = G.get_vertex_state(v_n)
+                edge1 = edge_creator.make_edge(qs, q_n)
+                cost = costs[vs] + edge1.get_cost()
+                if connect(qs, q_n, edge_creator, collision_checker, tol) and cost < costs[v_n]:
+                    G.remove_edge((G.parents[v_n], v_n))
+                    G.add_edge(vs, v_n, edge_creator.make_edge(qs, q_n))
+                    costs[v_n] = cost
+
+    return (G, root, None)
+
+
 def prm(
     cspace,
     qI,
@@ -178,6 +262,68 @@ def prm(
         if collision_checker.is_in_collision(alpha):
             return None
         neighbors = G.get_nearest_vertices(alpha, k, distance_computator)
+        vs = G.add_vertex(alpha)
+        for vn in neighbors:
+            if G.is_same_component(vn, vs):
+                continue
+            qn = G.get_vertex_state(vn)
+            if connect(alpha, qn, edge_creator, collision_checker, tol) and connect(
+                qn, alpha, edge_creator, collision_checker, tol
+            ):
+                G.add_edge(vs, vn, edge_creator.make_edge(alpha, qn))
+        return vs
+
+    G = GraphCC()
+    i = 0
+    while i < numIt:
+        alpha = sample(cspace)
+        if add_to_roadmap(G, alpha) is not None:
+            i = i + 1
+    root = None
+    if qI is not None:
+        root = add_to_roadmap(G, np.array(qI))
+    goal = None
+    if qG is not None:
+        goal = add_to_roadmap(G, np.array(qG))
+    return (G, root, goal)
+
+
+def prm_optimal(
+    cspace,
+    qI,
+    qG,
+    edge_creator,
+    distance_computator,
+    collision_checker,
+    k,
+    numIt=1000,
+    tol=1e-3,
+):
+    """PRM with obstacles
+
+    @type cspace: a list of tuples (smin, smax) indicating that the C-space
+        is given by the product of the tuples.
+    @type qI: a tuple (x, y) indicating the initial configuration.
+    @type qG: a typle (x, y) indicating the goal configuation
+        (can be None if prm is only used to explore the C-space).
+    @type edge_creator: an EdgeCreator object that includes the make_edge(s1, s2) function,
+        which returns an Edge object beginning at state s1 and ending at state s2.
+    @type distance_computator: a DistanceComputator object that includes the get_distance(s1, s2)
+        function, which returns the distance between s1 and s2.
+    @type collision_checker: a CollisionChecker object that includes the is_in_collision(s)
+        function, which returns whether the state s is in collision.
+    @type k: a float, indicating the number of nearest neighbors
+
+    @return (G, root, goal) where G is the roadmap, root is the id of the root vertex
+        and goal is the id of the goal vertex.
+        If the root (resp. goal) vertex does not exist in the roadmap, root (resp. goal) will be None.
+    """
+
+    def add_to_roadmap(G, alpha):
+        """Add configuration alpha to the roadmap G"""
+        if collision_checker.is_in_collision(alpha):
+            return None
+        neighbors = G.get_nearest_vertices(alpha, int(np.ceil((2*np.exp(1)+0.001)*np.log(len(G.vertices)))), distance_computator)
         vs = G.add_vertex(alpha)
         for vn in neighbors:
             if G.is_same_component(vn, vs):
