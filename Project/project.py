@@ -154,7 +154,7 @@ def parse_args():
     )
     parser.add_argument(
         "--alg",
-        choices=[ALG_RRT, ALG_PRM],
+        choices=[ALG_RRT, ALG_RRT_OPTIMAL, ALG_PRM, ALG_PRM_OPTIMAL],
         required=False,
         default=ALG_RRT,
         dest="alg",

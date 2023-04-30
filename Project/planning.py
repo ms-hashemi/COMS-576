@@ -196,7 +196,11 @@ def rrt_optimal(
             continue
         dist = get_euclidean_distance(qn, qs)
         if dist > tol:
-            neighbors = G.get_nearest_vertices(qs, int(np.ceil((2*np.exp(1)+0.001)*np.log(len(G.vertices)))), distance_computator)
+            if len(G.vertices) <= 1:
+                k = len(G.vertices)
+            else:
+                k = int(np.ceil((2*np.exp(1)+0.001)*np.log(len(G.vertices))))
+            neighbors = G.get_nearest_vertices(qs, k, distance_computator)
             vs = G.add_vertex(qs)
             v_min = copy.deepcopy(vn); q_min = copy.deepcopy(qn); c_min = costs[vn] + edge.get_cost()
             
@@ -323,7 +327,11 @@ def prm_optimal(
         """Add configuration alpha to the roadmap G"""
         if collision_checker.is_in_collision(alpha):
             return None
-        neighbors = G.get_nearest_vertices(alpha, int(np.ceil((2*np.exp(1)+0.001)*np.log(len(G.vertices)))), distance_computator)
+        if len(G.vertices) <= 1:
+            k = len(G.vertices)
+        else:
+            k = int(np.ceil((2*np.exp(1)+0.001)*np.log(len(G.vertices))))
+        neighbors = G.get_nearest_vertices(alpha, k, distance_computator)
         vs = G.add_vertex(alpha)
         for vn in neighbors:
             if G.is_same_component(vn, vs):
