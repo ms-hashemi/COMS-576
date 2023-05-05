@@ -3,7 +3,7 @@ Install the dubins package by doing
 $ pip install dubins
 
 Put the following files in the same folder or in your PYTHONPATH
-* hw5.py
+* project.py
 * geometry.py
 * edge.py
 * graph.py
@@ -12,12 +12,20 @@ Put the following files in the same folder or in your PYTHONPATH
 * queue.py
 * draw_cspace.py (This can be obtained from the course github.)
 
-For Task 1, run
+For RRT, run
 
-$ python hw5.py --alg rrt
+$ python project.py --alg rrt
 
-For Task 2, run
+For k-RRT*, run
 
-$ python hw5.py --alg prm
+$ python project.py --alg rrt_optimal
+
+For PRM, run
+
+$ python project.py --alg prm
+
+For k-PRM*, run
+
+$ python project.py --alg prm_optimal
 
 It will take a few seconds before showing the plot of the configuration space, the roadmap, and the path.

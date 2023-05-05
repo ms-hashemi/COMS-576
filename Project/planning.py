@@ -150,7 +150,7 @@ def rrt_optimal(
     distance_computator,
     collision_checker,
     pG=0.1,
-    numIt=100,
+    numIt=50,
     tol=1e-3,
 ):
     """RRT with obstacles
@@ -180,7 +180,7 @@ def rrt_optimal(
     root = G.add_vertex(np.array(qI))
     costs[root] = 0
     for i in range(numIt):
-        use_goal = qG is not None and random.uniform(0, 1) <= pG
+        use_goal = False # (qG is not None and random.uniform(0, 1) <= pG) commented for experiments
         if use_goal:
             alpha = np.array(qG)
         else:
@@ -227,6 +227,54 @@ def rrt_optimal(
                     G.add_edge(vs, v_n, edge_creator.make_edge(qs, q_n))
                     costs[v_n] = cost
 
+    for i in range(1, 2):
+        use_goal = True # (qG is not None and random.uniform(0, 1) <= pG) commented for experiments
+        if use_goal:
+            alpha = np.array(qG)
+        else:
+            alpha = sample(cspace)
+        vn = G.get_nearest(alpha, distance_computator, tol)
+        qn = G.get_vertex_state(vn)
+        if i > 0 and vn not in costs:
+            costs[vn] = costs[G.parents[vn][0]] + G.edges[(G.parents[vn][0], vn)][0]
+        (qs, edge) = stopping_configuration(
+            qn, alpha, edge_creator, collision_checker, tol
+        )
+        if qs is None or edge is None:
+            continue
+        dist = get_euclidean_distance(qn, qs)
+        if dist > tol:
+            if len(G.vertices) <= 1:
+                k = len(G.vertices)
+            else:
+                k = int(np.ceil((2*np.exp(1)+0.001)*np.log(len(G.vertices))))
+            neighbors = G.get_nearest_vertices(qs, k, distance_computator)
+            vs = G.add_vertex(qs)
+            v_min = copy.deepcopy(vn); q_min = copy.deepcopy(qn); c_min = costs[vn] + edge.get_cost()
+            
+            # Connect along a minimum-cost path
+            for v_n in neighbors:
+                q_n = G.get_vertex_state(v_n)
+                edge1 = edge_creator.make_edge(q_n, qs)
+                cost = costs[v_n] + edge1.get_cost()
+                if connect(q_n, qs, edge_creator, collision_checker, tol) and cost < c_min:
+                    v_min = copy.deepcopy(v_n); q_min = copy.deepcopy(q_n); c_min = copy.deepcopy(cost)
+            G.add_edge(v_min, vs, edge_creator.make_edge(q_min, qs))
+            costs[vs] = c_min
+
+            if use_goal and get_euclidean_distance(qs, qG) < tol:
+                return (G, root, vs)
+            
+            # Rewire the tree
+            for v_n in neighbors:
+                q_n = G.get_vertex_state(v_n)
+                edge1 = edge_creator.make_edge(qs, q_n)
+                cost = costs[vs] + edge1.get_cost()
+                if connect(qs, q_n, edge_creator, collision_checker, tol) and cost < costs[v_n]:
+                    G.remove_edge((G.parents[v_n][0], v_n))
+                    G.add_edge(vs, v_n, edge_creator.make_edge(qs, q_n))
+                    costs[v_n] = cost
+    
     return (G, root, None)
 
 
@@ -300,7 +348,7 @@ def prm_optimal(
     distance_computator,
     collision_checker,
     k,
-    numIt=1000,
+    numIt=300,
     tol=1e-3,
 ):
     """PRM with obstacles
@@ -334,8 +382,8 @@ def prm_optimal(
         neighbors = G.get_nearest_vertices(alpha, k, distance_computator)
         vs = G.add_vertex(alpha)
         for vn in neighbors:
-            if G.is_same_component(vn, vs):
-                continue
+            # if G.is_same_component(vn, vs):
+            #     continue
             qn = G.get_vertex_state(vn)
             if connect(alpha, qn, edge_creator, collision_checker, tol) and connect(
                 qn, alpha, edge_creator, collision_checker, tol

@@ -1,4 +1,5 @@
 import sys, math, argparse
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 from planning import (
@@ -176,6 +177,7 @@ if __name__ == "__main__":
     edge_creator = DubinsEdgeCreator(rho_min, 0.1)
     collision_checker = ObstacleCollisionChecker(obstacles)
     distance_computator = DubinsDistanceComputator(rho_min)
+    # random.seed(1234)
 
     args = parse_args()
     if args.alg == ALG_RRT:
@@ -223,8 +225,8 @@ if __name__ == "__main__":
 
     path = []
     if root is not None and goal is not None:
-        path = G.get_path(root, goal)
+        path, cost_path = G.get_path(root, goal, distance_computator)
 
     fig, ax = plt.subplots(1, 1)
-    draw(ax, cspace, obs_boundaries, qI, qG, G, path, title)
+    draw(ax, cspace, obs_boundaries, qI, qG, G, path, title + f": cost={cost_path:.2f}")
     plt.show()

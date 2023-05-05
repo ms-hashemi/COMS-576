@@ -145,7 +145,7 @@ class Graph:
 
         return v
 
-    def get_vertex_path(self, root_vertex, goal_vertex):
+    def get_vertex_path(self, root_vertex, goal_vertex, distance_computator):
         """Run Dijkstra's algorithm backward to compute the sequence of vertices from root_vertex to goal_vertex"""
 
         class ZeroCostToGoEstimator:
@@ -154,7 +154,14 @@ class Graph:
             def get_lower_bound(self, x):
                 return 0
 
-        Q = QueueAstar(ZeroCostToGoEstimator())
+        get_vertex_state = self.get_vertex_state
+        class CostToGoEstimator:
+            """Cost to go estimator, which always returns 0."""
+
+            def get_lower_bound(self, x):
+                return distance_computator.get_distance(get_vertex_state(root_vertex), get_vertex_state(x))
+        
+        Q = QueueAstar(CostToGoEstimator())
         Q.insert(goal_vertex, None, 0)
         while len(Q) > 0:
             v = Q.pop()
@@ -167,9 +174,9 @@ class Graph:
                 Q.insert(u, v, edge_cost)
         return []
 
-    def get_path(self, root_vertex, goal_vertex):
+    def get_path(self, root_vertex, goal_vertex, distance_computator):
         """Return a sequence of discretized states from root_vertex to goal_vertex"""
-        vertex_path = self.get_vertex_path(root_vertex, goal_vertex)
+        vertex_path = self.get_vertex_path(root_vertex, goal_vertex, distance_computator)
         return self.get_path_from_vertex_path(vertex_path)
 
     def get_path_from_vertex_path(self, vertex_path):
@@ -178,15 +185,17 @@ class Graph:
             return []
 
         path = []
+        cost_path = 0
         prev_vertex = vertex_path[0]
         for curr_ind in range(1, len(vertex_path)):
             curr_vertex = vertex_path[curr_ind]
-            edge = self.edges[(prev_vertex, curr_vertex)][1]
+            cost, edge = self.edges[(prev_vertex, curr_vertex)]
+            cost_path = cost_path + cost
             curr_path = edge.get_path()
             path.extend(curr_path)
             prev_vertex = curr_vertex
 
-        return path
+        return (path, cost_path)
 
     def draw(self, ax):
         """Draw the graph on the axis ax"""
@@ -224,7 +233,7 @@ class Tree(Graph):
         assert len(self.parents[vid2]) == 0
         super().add_edge(vid1, vid2, edge)
 
-    def get_vertex_path(self, root_vertex, goal_vertex):
+    def get_vertex_path(self, root_vertex, goal_vertex, distance_computator):
         """Trace back parents to return a path from root_vertex to goal_vertex"""
         vertex_path = [goal_vertex]
         v = goal_vertex
