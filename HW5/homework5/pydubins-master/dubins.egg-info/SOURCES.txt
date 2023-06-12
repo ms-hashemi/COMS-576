@@ -1,0 +1,13 @@
+LICENSE.txt
+MANIFEST.in
+README.rst
+setup.py
+dubins/dubins.c
+dubins/dubins.pyx
+dubins.egg-info/PKG-INFO
+dubins.egg-info/SOURCES.txt
+dubins.egg-info/dependency_links.txt
+dubins.egg-info/top_level.txt
+dubins/src/dubins.c
+dubins/include/dubins.h
+tests/test-dubins.py
